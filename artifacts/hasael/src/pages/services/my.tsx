@@ -182,7 +182,7 @@ export default function MyServices() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[1, 2].map(i => <div key={i} className="h-48 bg-secondary animate-pulse rounded-xl"></div>)}
           </div>
-        ) : services && services.length > 0 ? (
+        ) services?.data && services.data.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {services.map((service) => (
               <Card key={service.id} className="bg-card border-border/50">
