@@ -18,9 +18,7 @@ export default function Feed() {
   const { user, isAuthenticated } = useAuth();
   const isInvestor = isAuthenticated && user?.active_role === "investor";
 
-  const { data: myInvestmentsData } = useGetMyInvestments(undefined, {
-    query: { enabled: isInvestor },
-  });
+ const { data: myInvestmentsData } = useGetMyInvestments();
 
   const investedFarmIds = new Set(
     (myInvestmentsData?.data ?? []).map((inv) => inv.farm_id)
