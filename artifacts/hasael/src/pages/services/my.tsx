@@ -184,7 +184,7 @@ export default function MyServices() {
           </div>
         ) services?.data && services.data.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {services.map((service) => (
+            {services.data.map((service: any) => (
               <Card key={service.id} className="bg-card border-border/50">
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start mb-2">
