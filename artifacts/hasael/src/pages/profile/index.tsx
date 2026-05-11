@@ -47,9 +47,10 @@ export default function PublicProfile() {
   const [uploading, setUploading] = useState(false);
 
   const { data: myInvestmentsData } = useGetMyInvestments(
-    { status: GetMyInvestmentsStatus.accepted },
-    { query: { enabled: isOwnProfile && isInvestor } }
-  );
+  isOwnProfile && isInvestor
+    ? { status: GetMyInvestmentsStatus.accepted }
+    : undefined
+);
   const acceptedInvestments = myInvestmentsData?.data ?? [];
 
   const handleAvatarChange = async (
