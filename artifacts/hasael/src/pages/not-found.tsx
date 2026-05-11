@@ -1,0 +1,23 @@
+import { Card, CardContent } from "@/components/ui/card";
+import { AlertCircle } from "lucide-react";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
+
+export default function NotFound() {
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center bg-background" dir="rtl">
+      <Card className="w-full max-w-md mx-4 border-border/50">
+        <CardContent className="pt-6 text-center">
+          <AlertCircle className="h-16 w-16 text-destructive mx-auto mb-4 opacity-70" />
+          <h1 className="text-2xl font-bold mb-2">الصفحة غير موجودة</h1>
+          <p className="text-muted-foreground mb-6">
+            الصفحة التي تبحث عنها غير موجودة أو تم نقلها.
+          </p>
+          <Button asChild>
+            <Link href="/">العودة للرئيسية</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

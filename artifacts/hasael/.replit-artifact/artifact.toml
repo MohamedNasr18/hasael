@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "HASAEL — Agricultural Investment Platform"
+version = "1.0.0"
+id = "artifacts/hasael"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22250
+
+[services.development]
+run = "pnpm --filter @workspace/hasael run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/hasael", "run", "build" ]
+publicDir = "artifacts/hasael/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22250"
+BASE_PATH = "/"
