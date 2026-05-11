@@ -18,21 +18,16 @@ export default function FarmInvestments() {
   const queryClient = useQueryClient();
   const respondMutation = useRespondToInvestment();
 
-  const { data: investmentsData, isLoading } = useGetFarmInvestments(farmId, {
-    query: {
-      enabled: !!farmId,
-      queryKey: getGetFarmInvestmentsQueryKey(farmId)
-    }
-  });
+  const { data: investmentsData, isLoading } = useGetFarmInvestments(farmId);
 
   const investments = investmentsData?.data || [];
 
   const handleResponse = async (investmentId: number, action: InvestmentResponseInputAction) => {
     try {
       await respondMutation.mutateAsync({
-        id: investmentId,
-        data: { action }
-      });
+  investmentId: investmentId,
+  data: { action }
+});
       
       queryClient.invalidateQueries({ queryKey: getGetFarmInvestmentsQueryKey(farmId) });
       
