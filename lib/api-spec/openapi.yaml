@@ -1,0 +1,1371 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: HASAEL Agricultural Investment Platform API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication
+  - name: users
+    description: User management
+  - name: farms
+    description: Farm management
+  - name: feed
+    description: Public investment feed
+  - name: investments
+    description: Investment requests
+  - name: notifications
+    description: User notifications
+  - name: services
+    description: Agricultural services marketplace
+  - name: products
+    description: Agricultural products marketplace
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ── Auth ──────────────────────────────────────────────────────────────────────
+  /auth/signup:
+    post:
+      operationId: signUp
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignUpInput"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/signin:
+    post:
+      operationId: signIn
+      tags: [auth]
+      summary: Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignInInput"
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Users ─────────────────────────────────────────────────────────────────────
+  /users/me:
+    get:
+      operationId: getMe
+      tags: [users]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    patch:
+      operationId: updateMe
+      tags: [users]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/me/switch-role:
+    patch:
+      operationId: switchRole
+      tags: [users]
+      summary: Switch active role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SwitchRoleInput"
+      responses:
+        "200":
+          description: Role switched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{userId}/profile:
+    get:
+      operationId: getPublicProfile
+      tags: [users]
+      summary: Get public profile of a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Public user profile with farms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicProfile"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Farms ─────────────────────────────────────────────────────────────────────
+  /farms:
+    post:
+      operationId: createFarm
+      tags: [farms]
+      summary: Create a farm listing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FarmInput"
+      responses:
+        "201":
+          description: Farm created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Farm"
+
+  /farms/my:
+    get:
+      operationId: getMyFarms
+      tags: [farms]
+      summary: Get all farms owned by the current user
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [available, under_negotiation, funded, closed]
+        - name: crop_type
+          in: query
+          schema:
+            type: string
+        - name: is_published
+          in: query
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: List of my farms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FarmListResponse"
+
+  /farms/{farmId}:
+    get:
+      operationId: getFarm
+      tags: [farms]
+      summary: Get a single farm by ID
+      parameters:
+        - name: farmId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Farm detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Farm"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateFarm
+      tags: [farms]
+      summary: Update a farm
+      parameters:
+        - name: farmId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FarmUpdate"
+      responses:
+        "200":
+          description: Updated farm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Farm"
+    delete:
+      operationId: deleteFarm
+      tags: [farms]
+      summary: Delete a farm
+      parameters:
+        - name: farmId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  # ── Feed ──────────────────────────────────────────────────────────────────────
+  /feed:
+    get:
+      operationId: getFeed
+      tags: [feed]
+      summary: Browse public investment opportunities
+      parameters:
+        - name: governorate
+          in: query
+          schema:
+            type: string
+        - name: crop_type
+          in: query
+          schema:
+            type: string
+        - name: min_size_feddan
+          in: query
+          schema:
+            type: number
+        - name: max_size_feddan
+          in: query
+          schema:
+            type: number
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 12
+      responses:
+        "200":
+          description: Feed of available farms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedResponse"
+
+  # ── Investments ───────────────────────────────────────────────────────────────
+  /investments:
+    post:
+      operationId: createInvestment
+      tags: [investments]
+      summary: Submit an investment request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvestmentInput"
+      responses:
+        "201":
+          description: Investment request submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Investment"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /investments/my:
+    get:
+      operationId: getMyInvestments
+      tags: [investments]
+      summary: Get all my investment requests
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, accepted, rejected, cancelled]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: List of my investments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvestmentListResponse"
+
+  /investments/farm/{farmId}:
+    get:
+      operationId: getFarmInvestments
+      tags: [investments]
+      summary: Get investment requests for a farm (farm owner only)
+      parameters:
+        - name: farmId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Investments for the farm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvestmentListResponse"
+
+  /investments/{investmentId}/respond:
+    patch:
+      operationId: respondToInvestment
+      tags: [investments]
+      summary: Accept or reject an investment request (farm owner)
+      parameters:
+        - name: investmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvestmentResponseInput"
+      responses:
+        "200":
+          description: Investment updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Investment"
+
+  /investments/{investmentId}/cancel:
+    patch:
+      operationId: cancelInvestment
+      tags: [investments]
+      summary: Cancel your own investment request
+      parameters:
+        - name: investmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Investment cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Investment"
+
+  # ── Notifications ─────────────────────────────────────────────────────────────
+  /notifications:
+    get:
+      operationId: getMyNotifications
+      tags: [notifications]
+      summary: Get my notifications
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Notifications list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationListResponse"
+
+  /notifications/{notificationId}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark a notification as read
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Notification marked read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+
+  /notifications/read-all:
+    patch:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      responses:
+        "200":
+          description: All marked read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  # ── Services ──────────────────────────────────────────────────────────────────
+  /services:
+    post:
+      operationId: createService
+      tags: [services]
+      summary: Create a service listing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceInput"
+      responses:
+        "201":
+          description: Service created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Service"
+    get:
+      operationId: browseServices
+      tags: [services]
+      summary: Browse available services
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [machinery, irrigation, logistics, consultancy, other]
+        - name: governorate
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 12
+      responses:
+        "200":
+          description: Services list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceListResponse"
+
+  /services/my:
+    get:
+      operationId: getMyServices
+      tags: [services]
+      summary: Get my service listings
+      responses:
+        "200":
+          description: My services
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceListResponse"
+
+  /services/{serviceId}:
+    patch:
+      operationId: updateService
+      tags: [services]
+      summary: Update a service listing
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceUpdate"
+      responses:
+        "200":
+          description: Updated service
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Service"
+    delete:
+      operationId: deleteService
+      tags: [services]
+      summary: Delete a service listing
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  # ── Products ──────────────────────────────────────────────────────────────────
+  /products:
+    get:
+      operationId: getProducts
+      tags: [products]
+      summary: Browse all products
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [seeds, fertilizers, tools, equipment, livestock, crops, food, other]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 12
+      responses:
+        "200":
+          description: Products list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a new product (user role)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /products/my:
+    get:
+      operationId: getMyProducts
+      tags: [products]
+      summary: Get my products (user role)
+      responses:
+        "200":
+          description: My products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+
+  /products/{productId}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get a single product
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    patch:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update a product (owner only)
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdate"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Delete a product (owner only)
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  # ── Dashboard summary (wow endpoint) ──────────────────────────────────────────
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [users]
+      summary: Get dashboard summary for current user
+      responses:
+        "200":
+          description: Dashboard summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    SuccessResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    Pagination:
+      type: object
+      required: [total, page, limit, total_pages]
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        total_pages:
+          type: integer
+
+    # ── Auth ────────────────────────────────────────────────────────────────────
+    SignUpInput:
+      type: object
+      required: [full_name, email, password, roles]
+      properties:
+        full_name:
+          type: string
+          minLength: 3
+          maxLength: 50
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [farm_owner, investor, service_provider, user]
+          minItems: 1
+        avatar:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+
+    SignInInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [user, token]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+
+    # ── User ────────────────────────────────────────────────────────────────────
+    User:
+      type: object
+      required: [id, full_name, email, roles, active_role, created_at]
+      properties:
+        id:
+          type: integer
+        full_name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        avatar:
+          type: ["string", "null"]
+        roles:
+          type: array
+          items:
+            type: string
+        active_role:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    UserUpdate:
+      type: object
+      properties:
+        full_name:
+          type: string
+          minLength: 3
+        phone:
+          type: string
+        avatar:
+          type: string
+        password:
+          type: string
+          minLength: 6
+
+    SwitchRoleInput:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [farm_owner, investor, service_provider, user]
+
+    PublicProfile:
+      type: object
+      required: [id, full_name, avatar, roles, farms]
+      properties:
+        id:
+          type: integer
+        full_name:
+          type: string
+        avatar:
+          type: ["string", "null"]
+        roles:
+          type: array
+          items:
+            type: string
+        farms:
+          type: array
+          items:
+            $ref: "#/components/schemas/FarmCard"
+
+    # ── Farm ────────────────────────────────────────────────────────────────────
+    InvestmentTerms:
+      type: object
+      required: [min_investment, expected_roi, duration_months]
+      properties:
+        min_investment:
+          type: number
+        expected_roi:
+          type: number
+        duration_months:
+          type: integer
+        profit_split:
+          type: number
+          default: 50
+
+    Location:
+      type: object
+      required: [governorate]
+      properties:
+        governorate:
+          type: string
+        district:
+          type: ["string", "null"]
+        lat:
+          type: ["number", "null"]
+        lng:
+          type: ["number", "null"]
+
+    Farm:
+      type: object
+      required: [id, owner_id, name, crop_type, size_feddan, location, investment_terms, is_published, status, views_count, interest_count, created_at]
+      properties:
+        id:
+          type: integer
+        owner_id:
+          type: integer
+        owner_name:
+          type: ["string", "null"]
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        crop_type:
+          type: string
+        size_feddan:
+          type: number
+        location:
+          $ref: "#/components/schemas/Location"
+        cover_image:
+          type: ["string", "null"]
+        images:
+          type: array
+          items:
+            type: string
+        investment_terms:
+          $ref: "#/components/schemas/InvestmentTerms"
+        is_published:
+          type: boolean
+        published_at:
+          type: ["string", "null"]
+          format: date-time
+        status:
+          type: string
+          enum: [available, under_negotiation, funded, closed]
+        views_count:
+          type: integer
+        interest_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    FarmCard:
+      type: object
+      required: [id, name, crop_type, size_feddan, location, investment_terms, cover_image, status, interest_count]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        crop_type:
+          type: string
+        size_feddan:
+          type: number
+        location:
+          $ref: "#/components/schemas/Location"
+        cover_image:
+          type: ["string", "null"]
+        investment_terms:
+          $ref: "#/components/schemas/InvestmentTerms"
+        status:
+          type: string
+        interest_count:
+          type: integer
+        owner_name:
+          type: ["string", "null"]
+
+    FarmInput:
+      type: object
+      required: [name, crop_type, size_feddan, location, investment_terms]
+      properties:
+        name:
+          type: string
+          minLength: 2
+        description:
+          type: string
+        crop_type:
+          type: string
+          enum: [wheat, corn, rice, vegetables, fruits, cotton, sugarcane, other]
+        size_feddan:
+          type: number
+          minimum: 0.1
+        location:
+          $ref: "#/components/schemas/Location"
+        cover_image:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+        investment_terms:
+          $ref: "#/components/schemas/InvestmentTerms"
+        is_published:
+          type: boolean
+          default: false
+
+    FarmUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        crop_type:
+          type: string
+          enum: [wheat, corn, rice, vegetables, fruits, cotton, sugarcane, other]
+        size_feddan:
+          type: number
+        location:
+          $ref: "#/components/schemas/Location"
+        cover_image:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+        investment_terms:
+          $ref: "#/components/schemas/InvestmentTerms"
+        is_published:
+          type: boolean
+        status:
+          type: string
+          enum: [available, under_negotiation, funded, closed]
+
+    FarmListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Farm"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    # ── Feed ────────────────────────────────────────────────────────────────────
+    FeedResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/FarmCard"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    # ── Investment ───────────────────────────────────────────────────────────────
+    Investment:
+      type: object
+      required: [id, farm_id, investor_id, status, type, created_at]
+      properties:
+        id:
+          type: integer
+        farm_id:
+          type: integer
+        farm_name:
+          type: ["string", "null"]
+        investor_id:
+          type: integer
+        investor_name:
+          type: ["string", "null"]
+        amount:
+          type: ["number", "null"]
+        message:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, accepted, rejected, cancelled]
+        type:
+          type: string
+          enum: [express_interest, full_investment]
+        created_at:
+          type: string
+          format: date-time
+
+    InvestmentInput:
+      type: object
+      required: [farm_id, type]
+      properties:
+        farm_id:
+          type: integer
+        type:
+          type: string
+          enum: [express_interest, full_investment]
+        amount:
+          type: number
+        message:
+          type: string
+
+    InvestmentResponseInput:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [accepted, rejected]
+
+    InvestmentListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Investment"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    # ── Notification ─────────────────────────────────────────────────────────────
+    Notification:
+      type: object
+      required: [id, recipient_id, type, is_read, created_at]
+      properties:
+        id:
+          type: integer
+        recipient_id:
+          type: integer
+        type:
+          type: string
+          enum: [investment_received, investment_accepted, investment_rejected, investment_cancelled]
+        investment_id:
+          type: ["integer", "null"]
+        farm_id:
+          type: ["integer", "null"]
+        farm_name:
+          type: ["string", "null"]
+        investor_name:
+          type: ["string", "null"]
+        is_read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    NotificationListResponse:
+      type: object
+      required: [data, pagination, unread_count]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+        unread_count:
+          type: integer
+
+    # ── Service ──────────────────────────────────────────────────────────────────
+    Service:
+      type: object
+      required: [id, provider_id, title, category, price_per_unit, unit, is_available, created_at]
+      properties:
+        id:
+          type: integer
+        provider_id:
+          type: integer
+        provider_name:
+          type: ["string", "null"]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        category:
+          type: string
+          enum: [machinery, irrigation, logistics, consultancy, other]
+        price_per_unit:
+          type: number
+        unit:
+          type: string
+        governorate:
+          type: ["string", "null"]
+        is_available:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    ServiceInput:
+      type: object
+      required: [title, category, price_per_unit, unit]
+      properties:
+        title:
+          type: string
+          minLength: 3
+        description:
+          type: string
+        category:
+          type: string
+          enum: [machinery, irrigation, logistics, consultancy, other]
+        price_per_unit:
+          type: number
+          minimum: 0
+        unit:
+          type: string
+        governorate:
+          type: string
+        is_available:
+          type: boolean
+          default: true
+
+    ServiceUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [machinery, irrigation, logistics, consultancy, other]
+        price_per_unit:
+          type: number
+        unit:
+          type: string
+        governorate:
+          type: string
+        is_available:
+          type: boolean
+
+    ServiceListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Service"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    # ── Product ──────────────────────────────────────────────────────────────────
+    Product:
+      type: object
+      required: [id, owner_id, title, price, category, quantity, images, is_available, created_at]
+      properties:
+        id:
+          type: integer
+        owner_id:
+          type: integer
+        owner_name:
+          type: ["string", "null"]
+        owner_avatar:
+          type: ["string", "null"]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        price:
+          type: number
+        category:
+          type: string
+          enum: [seeds, fertilizers, tools, equipment, livestock, crops, food, other]
+        quantity:
+          type: integer
+        images:
+          type: array
+          items:
+            type: string
+        is_available:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    ProductInput:
+      type: object
+      required: [title, price, category, quantity]
+      properties:
+        title:
+          type: string
+          minLength: 3
+        description:
+          type: string
+        price:
+          type: number
+          minimum: 0
+        category:
+          type: string
+          enum: [seeds, fertilizers, tools, equipment, livestock, crops, food, other]
+        quantity:
+          type: integer
+          minimum: 1
+        images:
+          type: array
+          items:
+            type: string
+        is_available:
+          type: boolean
+          default: true
+
+    ProductUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        category:
+          type: string
+          enum: [seeds, fertilizers, tools, equipment, livestock, crops, food, other]
+        quantity:
+          type: integer
+        images:
+          type: array
+          items:
+            type: string
+        is_available:
+          type: boolean
+
+    ProductListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    # ── Dashboard summary ────────────────────────────────────────────────────────
+    DashboardSummary:
+      type: object
+      required: [total_farms, total_investments, pending_investments, active_farms, unread_notifications]
+      properties:
+        total_farms:
+          type: integer
+        total_investments:
+          type: integer
+        pending_investments:
+          type: integer
+        active_farms:
+          type: integer
+        unread_notifications:
+          type: integer
+        total_interest_received:
+          type: integer
+        total_services:
+          type: integer

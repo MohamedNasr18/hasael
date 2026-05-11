@@ -1,0 +1,93 @@
+Task 1 — Rename platform to "حصائل" everywhere
+Search the entire codebase for every occurrence of "هاصل" or "HASAEL" or "Hasael" in:
+
+All .jsx / .js / .ts / .tsx files
+index.html (title, meta tags)
+package.json (name field)
+Any config files
+
+Replace all of them with حصائل (Arabic) or Hasael only where it's a technical identifier that cannot be Arabic (e.g. npm package name). Every visible UI text must say حصائل.
+
+Task 2 — Farm CRUD for farm owner
+On the farm owner's my-farms page and farm detail page, implement full edit and delete:
+Edit farm:
+
+Each farm card has a "تعديل" button, visible only to the farm owner (user._id === farm.owner._id).
+Clicking it opens a modal with a pre-filled form containing all existing farm data.
+Fields: name, description, crop_type (select), size_feddan, location.governorate, location.district, investment_terms (min_investment, expected_roi, duration_months, profit_split).
+On submit → PATCH /api/farms/:id with changed fields only.
+On success: close modal, refresh farm list, show success toast.
+
+Delete farm:
+
+Each farm card has a "حذف" button, visible only to the farm owner.
+Clicking shows a confirmation dialog: "هل أنت متأكد من حذف هذه المزرعة؟"
+On confirm → DELETE /api/farms/:id.
+On success: remove the card from UI immediately without page reload.
+
+
+Task 3 — Redesign Landing Page UI
+Redesign the landing page to be visually stronger. Requirements:
+
+Hero: full-width agricultural cover image (https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1600) with dark overlay. Large bold Arabic headline, subheadline, two CTA buttons.
+Stats bar: 4 animated counter cards (مستثمر مسجل، مزرعة منشورة، صفقة مكتملة، عائد متوسط). Fetch from GET /api/stats, fallback to +500 / +120 / +85 / 18%.
+How it works: 3 clean steps with icons (ti-user-plus, ti-search, ti-handshake), title, and 2-line description each.
+Testimonials: 3 investor quote cards with avatar initials, quote, name, role.
+Footer: background color must be green (use the existing green from the project's color system). White text. Three columns: logo+tagline / quick links / contact info (info@hasael.com, +966 50 000 0000, الرياض المملكة العربية السعودية). Bottom bar with copyright.
+
+Make the overall layout feel premium — generous spacing, clear visual hierarchy, consistent card styles matching the existing design system. Do not change the existing color system elsewhere.
+
+Task 4 — Image upload for farm and profile picture
+Farm cover image on creation and edit:
+
+Add an image upload field to the create farm form and the edit farm modal.
+Use a file input that shows a preview of the selected image before upload.
+On form submit, upload the image first using POST /api/upload (or the existing upload endpoint in the project — check first), get back the image URL, then include it as cover_image in the farm creation/update payload.
+Display the cover image on the farm card and farm detail page.
+
+Profile picture for any user:
+
+On the profile page (both farm owner and investor profiles), add a circular avatar at the top.
+The avatar shows the current profile picture if it exists, otherwise shows the user's initials.
+Clicking the avatar opens a file picker.
+On file select: upload the image, then PATCH /api/users/me with { avatar: <url> }.
+Update the avatar in the UI immediately after success without full page reload.
+
+
+Task 5 — Investment flow: farm owner accepts, investor profile updates
+Farm owner side:
+
+On the farm owner's dashboard or farm detail page, show a section "طلبات الاستثمار" that lists all pending investment requests for each farm.
+Fetch from GET /api/investments/farm/:farmId.
+Each request shows: investor name, investment type, message (if any), date.
+Each request has an "قبول" button and a "رفض" button.
+On قبول → PATCH /api/investments/:id/respond with body { status: "accepted" }.
+On رفض → same endpoint with { status: "rejected" }.
+After responding, update the request card status in the UI immediately.
+
+Investor side:
+
+On the investor profile page, the investments list (GET /api/investments/my) must show the current status of each investment with a colored badge:
+
+pending → yellow badge "قيد الانتظار"
+accepted → green badge "مقبول"
+rejected → red badge "مرفوض"
+cancelled → gray badge "ملغي"
+
+
+If an investment is accepted, show the farm card with a green border or accepted indicator.
+
+Farm card update:
+
+After an investment is accepted for a farm, the farm's status changes to under_negotiation (this happens on the backend already).
+On the feed, farm cards with status: under_negotiation must show a badge "قيد التفاوض" and hide the "استثمر الآن" button.
+
+
+Rules
+
+These are new tasks — do not redo or touch work from previous tasks unless directly related.
+Follow the existing component structure, naming, and file organization already in the project.
+Tailwind CSS only — no inline styles unless Tailwind cannot cover it.
+All UI must be fully responsive.
+Do not change existing routes, auth logic, or API calls outside the scope above.
+Use react-query useMutation for all write operations and invalidate relevant queries on success.

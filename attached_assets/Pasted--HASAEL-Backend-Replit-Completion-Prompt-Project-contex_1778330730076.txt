@@ -1,0 +1,248 @@
+# HASAEL Backend — Replit Completion Prompt
+
+---
+
+## 🧠 Project context
+
+You are continuing the development of **HASAEL** — an integrated digital agricultural ecosystem built with **Node.js + Express + MongoDB (Mongoose)**.
+
+HASAEL is structured around **2 active marketplaces**, all accessible through a single **Unified Account System**:
+
+- **Marketplace 1 — Agricultural Investment & Operations**: connects investors with farm owners. Farm owners list their lands and publish investment opportunities; investors browse the feed, submit interest or investment requests, and manage deals.
+- **Marketplace 2 — Agricultural Services**: connects farm owners and investors with service providers (machinery, irrigation, logistics, consultancy). *(backend scaffolding required — see section below)*
+
+**Unified Account System**: one user account can hold multiple roles simultaneously (`farm_owner`, `investor`, `service_provider`). The `role` field on the User model is an array. A user switches context (active marketplace + active role) via a `active_role` field on their session or profile — not by creating separate accounts. All resources (farms, investments, services) are always scoped to `req.user._id` regardless of which marketplace the request comes from.
+
+The project already has the following files. **Do NOT recreate or overwrite them. Read them carefully first and build on top of them.**
+
+### Existing files:
+- `app.js` — Express app setup
+- `server.js` — Server entry point
+- `middleware/asyncHandler.js` — Async error wrapper
+- `middleware/protect.js` — JWT auth middleware
+- `controllers/userController.js` — User CRUD
+- `controllers/farmController.js` — Farm CRUD (create, getMyFarms, update, delete)
+- `routes/userRoutes.js`
+- `routes/farmRoutes.js`
+- `validators/` — Joi validators
+
+---
+
+## 📐 Architecture rules — follow strictly
+
+1. **Every controller function must be wrapped with `asyncHandler`** — no try/catch blocks.
+2. **Every route must go through the `protect` middleware** unless it is a public auth route (login/register).
+3. **Validation with Joi** — every POST and PATCH route must have a Joi validator middleware before the controller.
+4. **Responses follow this exact shape:**
+```json
+{
+  "success": true | false,
+  "message": "...",
+  "data": { } | [ ] | null,
+  "pagination": { } // only on list endpoints
+}
+```
+5. **Ownership guard pattern** — any resource that belongs to a user must check `resource.owner.toString() === req.user._id.toString()` before update or delete.
+6. **Status guard** — resources with a `status` field must block edits when status is terminal (e.g. `funded`, `closed`).
+7. **Whitelist updates** — never use `Model.findByIdAndUpdate(id, req.body)` directly. Always whitelist allowed fields explicitly.
+8. **Nested object updates** — use spread merge for nested fields (e.g. `investment_terms`, `location`) so partial updates don't wipe existing data.
+
+---
+
+## 🗄️ Existing data models
+
+### User — Unified Account
+- `full_name`, `email`, `password` (select: false), `phone`, `avatar`
+- `roles`: `[String]` — array, enum: `farm_owner | investor | service_provider`. One account can hold multiple roles at the same time.
+- `active_role`: `String` — the role currently active (must exist in `roles[]`). Scopes which marketplace context and feed the user sees.
+- On register: user picks initial role(s); `active_role` defaults to the first selected role.
+- Add `PATCH /api/users/me/switch-role` — body: `{ role }` — switches `active_role`. Guard: role must already exist in `roles[]`.
+
+### Farm (already built)
+- `owner` → ref: User
+- `name`, `description`, `crop_type` (enum), `size_feddan`, `location` (sub-schema: governorate, district, coordinates)
+- `cover_image`, `images[]`, `documents[]`
+- `investment_terms` (sub-schema: min_investment, expected_roi, duration_months, profit_split)
+- `is_published` (bool), `published_at` (auto-set on first publish via pre-save hook)
+- `status`: available | under_negotiation | funded | closed
+- `views_count`, `interest_count`
+
+---
+
+## ✅ What needs to be built
+
+### 1. Investment model + CRUD
+Create `models/investmentSchema.js`:
+- `farm` → ref: Farm
+- `investor` → ref: User
+- `owner` → ref: User (farm owner — for quick ownership checks)
+- `amount` (Number, optional)
+- `message` (String)
+- `status`: pending | accepted | rejected | cancelled
+- `type`: express_interest | full_investment
+- `timestamps: true`
+
+Controllers needed (`controllers/investmentController.js`):
+- `createInvestment` — POST /api/investments — investor submits interest or investment request
+  - Guard: investor cannot invest in their own farm
+  - Guard: farm must be `available` and `is_published: true`
+  - On create: increment `farm.interest_count` by 1
+- `getMyInvestments` — GET /api/investments/my — investor sees all their requests (paginated, filterable by status)
+- `getFarmInvestments` — GET /api/investments/farm/:farmId — farm owner sees all requests on their farm
+  - Guard: only the farm owner can access this
+- `respondToInvestment` — PATCH /api/investments/:id/respond — farm owner accepts or rejects
+  - Guard: only farm owner can respond
+  - On accept: update farm status to `under_negotiation`
+  - On reject: no farm status change
+- `cancelInvestment` — PATCH /api/investments/:id/cancel — investor cancels their own pending request
+  - Guard: only the investor who created it, and only if status is `pending`
+
+---
+
+### 2. Feed endpoint
+Create `controllers/feedController.js`:
+- `getFeed` — GET /api/feed
+  - Returns all farms where `is_published: true` AND `status: available`
+  - Paginated (cursor-based or offset — your choice, be consistent)
+  - Filterable by: `governorate`, `crop_type`, `min_size_feddan`, `max_size_feddan`
+  - Sorted by `published_at` descending
+  - Each farm card returns: `name`, `location`, `crop_type`, `size_feddan`, `investment_terms`, `cover_image`, `owner` (name only), `interest_count`
+  - On each fetch: increment `views_count` for each returned farm (use `bulkWrite` for performance)
+
+---
+
+### 3. Public profile endpoint
+Add to `userController.js`:
+- `getPublicProfile` — GET /api/users/:id/profile
+  - Returns user's public info (no email, no password)
+  - Includes their published farms: `GET /api/users/:id/farms` equivalent embedded in response
+  - If the requesting user is the owner themselves, show all farms (drafts + published)
+  - If a visitor, show only `is_published: true` farms
+
+---
+
+### 4. Notification model (lightweight)
+Create `models/notificationSchema.js`:
+- `recipient` → ref: User
+- `type`: investment_received | investment_accepted | investment_rejected | investment_cancelled
+- `investment` → ref: Investment
+- `farm` → ref: Farm
+- `is_read` (bool, default: false)
+- `timestamps: true`
+
+Create `controllers/notificationController.js`:
+- `getMyNotifications` — GET /api/notifications — paginated, sorted newest first
+- `markAsRead` — PATCH /api/notifications/:id/read
+- `markAllAsRead` — PATCH /api/notifications/read-all
+
+Notifications must be **automatically created** inside `investmentController.js` after these events:
+- Farm owner receives notification when a new investment request is submitted
+- Investor receives notification when their request is accepted or rejected
+- Farm owner receives notification when investor cancels
+
+---
+
+### 5. Error handler middleware
+Create `middleware/errorHandler.js` and mount it at the end of `app.js`:
+```js
+app.use(errorHandler);
+```
+It must handle:
+- Mongoose `ValidationError` → 400 with field-level messages
+- Mongoose `CastError` (invalid ObjectId) → 400 "Invalid ID format"
+- Mongoose duplicate key (`code 11000`) → 409 with the duplicate field name
+- JWT errors (`JsonWebTokenError`, `TokenExpiredError`) → 401
+- Generic errors → 500
+
+Shape:
+```json
+{
+  "success": false,
+  "message": "Human-readable error",
+  "errors": { } // field-level, only for ValidationError
+}
+```
+
+---
+
+### 6. Routes to add to app.js
+```js
+app.use('/api/feed',          require('./routes/feedRoutes'));
+app.use('/api/investments',   require('./routes/investmentRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+```
+
+---
+
+
+### 7. Marketplace 2 scaffold — Agricultural Services
+Marketplace 2 connects farm owners/investors with service providers (machinery, irrigation, logistics, consultancy). It is **not fully built yet** but the backend must be scaffolded so it shares the same Unified Account System.
+
+Create `models/serviceSchema.js`:
+- `provider` → ref: User (role must include `service_provider`)
+- `title`, `description` (String)
+- `category`: enum `machinery | irrigation | logistics | consultancy | other`
+- `price_per_unit` (Number), `unit` (String, e.g. "per feddan", "per day")
+- `location.governorate` (String)
+- `is_available` (bool, default: true)
+- `timestamps: true`
+
+Create `controllers/serviceController.js` with:
+- `createService` — POST /api/services — Guard: `req.user.roles` must include `service_provider`
+- `getMyServices` — GET /api/services/my
+- `updateService` — PATCH /api/services/:id — ownership guard
+- `deleteService` — DELETE /api/services/:id — ownership guard
+- `browseServices` — GET /api/services — public, filterable by `category`, `governorate`
+
+Add `routes/serviceRoutes.js` and mount in `app.js`:
+```js
+app.use('/api/services', require('./routes/serviceRoutes'));
+```
+
+## 📁 Final folder structure expected
+
+```
+├── app.js
+├── server.js
+├── middleware/
+│   ├── asyncHandler.js     ← already exists
+│   ├── protect.js          ← already exists
+│   └── errorHandler.js     ← NEW
+├── models/
+│   ├── userSchema.js       ← already exists
+│   ├── farmSchema.js       ← already exists
+│   ├── investmentSchema.js ← NEW
+│   ├── notificationSchema.js ← NEW
+│   └── serviceSchema.js      ← NEW
+├── controllers/
+│   ├── userController.js       ← already exists (add getPublicProfile)
+│   ├── farmController.js       ← already exists
+│   ├── investmentController.js ← NEW
+│   ├── feedController.js       ← NEW
+│   ├── notificationController.js ← NEW
+│   └── serviceController.js       ← NEW
+├── routes/
+│   ├── userRoutes.js         ← already exists
+│   ├── farmRoutes.js         ← already exists
+│   ├── investmentRoutes.js   ← NEW
+│   ├── feedRoutes.js         ← NEW
+│   ├── notificationRoutes.js ← NEW
+│   └── serviceRoutes.js      ← NEW
+└── validators/
+    ├── (existing validators) ← already exist
+    ├── investmentValidator.js ← NEW
+    └── notificationValidator.js ← NEW (optional)
+    └── serviceValidator.js     ← NEW
+```
+
+---
+
+## ⚠️ Important rules for Replit
+
+- Do not use `var` — use `const` and `let` only
+- Do not use `findByIdAndUpdate` with `req.body` directly — always whitelist
+- Do not add `console.log` in production code — use proper error passing via `next(err)`
+- Every new route file must follow the same pattern as `farmRoutes.js`
+- Every new controller must follow the same pattern as `farmController.js`
+- MongoDB connection is already handled in `server.js` — do not add another connection
+- Environment variables are already in `.env` — use `process.env.JWT_SECRET`, `process.env.MONGO_URI`

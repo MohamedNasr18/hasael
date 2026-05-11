@@ -1,0 +1,86 @@
+Task 1 — Convert entire website language to Arabic
+
+Translate every visible static text string in every page and component to Arabic.
+Set dir="rtl" and lang="ar" on the root <html> element in index.html.
+Add direction: rtl; text-align: right; to the global CSS / Tailwind base.
+Flip all flex/grid layouts that assume LTR: icons on the left move to the right, arrows reverse direction.
+Keep all variable data (names, emails, numbers from API) as-is — translate only static UI strings.
+
+
+Task 2 — Redesign the Landing Page
+Replace or upgrade the existing landing page with the following sections in order:
+2.1 Hero section
+
+Full-width cover image of green agricultural land (use: https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1600).
+Dark overlay on the image (rgba 0,0,0,0.45) so text is readable.
+Centered Arabic headline: "منصة هاصل — الاستثمار الزراعي الذكي"
+Subheadline: "نربط أصحاب الأراضي بالمستثمرين لبناء مستقبل زراعي مستدام"
+Two CTA buttons: "ابدأ الاستثمار" → /signup and "اعرف أكثر" → scrolls to #how-it-works.
+
+2.2 Platform stats section
+4 metric cards in a row:
+MetricValueمستثمر مسجل+500مزرعة منشورة+120صفقة مكتملة+85عائد متوسط18%
+Fetch real numbers from GET /api/stats and display them; fall back to the values above if the request fails.
+2.3 How it works section (id="how-it-works")
+3-column grid, each column has an icon, a bold title, and 2-line description:
+Icon (Tabler)TitleDescriptionti-user-plusسجّل حسابكأنشئ حسابك في دقيقة واختر دورك كمستثمر أو صاحب أرضti-searchاستعرض الفرصتصفح المزارع المتاحة وابحث حسب المنطقة والمحصول والعائدti-handshakeأتمّ الصفقةتواصل مع الطرف الآخر وأبرم اتفاقية الاستثمار بأمان
+2.4 Investor testimonials section
+Title: "ماذا يقول مستثمرونا"
+3 cards side by side, each has avatar circle with initials, quote text, name + role.
+
+أحمد الشمري — مستثمر زراعي: "منصة هاصل غيّرت طريقة استثماري — وجدت أرضاً مناسبة في أسبوع واحد فقط."
+سارة القحطاني — صاحبة أرض: "تمكنت من إيجاد شريك استثماري موثوق خلال أيام، والعملية كانت شفافة تماماً."
+محمد العتيبي — مستثمر: "عائد استثماري ممتاز وفريق دعم متجاوب. أنصح كل من يبحث عن فرص زراعية."
+
+2.5 Footer
+Dark background, white text. Three columns:
+Column 1 — Logo + tagline
+
+Logo: هاصل
+Tagline: منصة الاستثمار الزراعي الذكي
+
+Column 2 — Quick links
+الرئيسية / كيف نعمل / تسجيل الدخول
+Column 3 — Contact
+
+📧 info@hasael.com
+📞 +966 50 000 0000
+📍 الرياض، المملكة العربية السعودية
+
+Bottom bar: حقوق النشر © 2026 هاصل — جميع الحقوق محفوظة
+
+Task 3 — Farm owner: edit and delete farm
+On the farm owner's profile page or my-farms page, each farm card must have two action buttons: تعديل and حذف.
+Edit:
+
+Clicking "تعديل" opens a modal or navigates to an edit form pre-filled with the farm's existing data.
+On submit → PATCH /api/farms/:id with only the changed fields.
+On success: refresh the farms list and show a success message.
+
+Delete:
+
+Clicking "حذف" shows a confirmation dialog: "هل أنت متأكد من حذف هذه المزرعة؟" with confirm and cancel buttons.
+On confirm → DELETE /api/farms/:id.
+On success: remove the farm card from the UI immediately without full page reload.
+
+Both buttons are only visible when user._id === farm.owner._id.
+
+Task 4 — Investor: invest button on farm card
+When the logged-in user's active_role is investor, each farm card in the feed must show an "استثمر الآن" button.
+Behavior:
+
+Clicking the button → POST /api/investments/:farmId with body: { type: "express_interest" }.
+No payment form, no validation modal — just send the request directly.
+On success: change the button to "تم الإرسال ✓" and disable it so it cannot be clicked again.
+On error: show a small error message under the button (e.g. "حدث خطأ، حاول مرة أخرى").
+If the user has already submitted an investment for this farm (check GET /api/investments/my on page load), show the button as disabled with text "تم الإرسال ✓" from the start.
+
+
+Rules
+
+Use the existing component structure and naming conventions already in the project.
+Use Tailwind CSS only.
+All new UI must be fully responsive.
+Do not change any existing route, API call, or auth logic outside the scope above.
+The landing page must remain accessible without login.
+Do not change any colors — keep the existing design system.
